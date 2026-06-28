@@ -16,20 +16,18 @@ class DavinciView(ctk.CTkToplevel):
         self.lbl_color = ctk.CTkLabel(self, text="Color de Acento:", font=("Arial", 12, "bold"))
         self.lbl_color.pack(pady=(20, 5))
 
-        self.combo_color = ctk.CTkComboBox(self, values=["blue", "green", "dark-blue"])
+        # Añadidos los estilos antiguos y nuevos
+        opciones_color = ["Azul (Defecto)", "Verde", "Azul Oscuro", "Windows XP", "Tecno Caotico", "RC", "Kawai", "Punk Primitivo"]
+        self.combo_color = ctk.CTkComboBox(self, values=opciones_color)
         self.combo_color.pack(pady=5)
 
         self.btn_guardar = ctk.CTkButton(self, text="Aplicar y Guardar", fg_color="green")
         self.btn_guardar.pack(pady=30)
 
-    def vincular_guardado(self, callback):
-        self.btn_guardar.configure(command=callback)
+    def vincular_guardado(self, callback): self.btn_guardar.configure(command=callback)
 
     def obtener_estilos(self) -> dict:
-        return {
-            "modo_apariencia": self.combo_modo.get(),
-            "color_acento": self.combo_color.get()
-        }
+        return {"modo_apariencia": self.combo_modo.get(), "color_acento": self.combo_color.get()}
 
     def cargar_estilos(self, modo_apariencia: str, color_acento: str):
         self.combo_modo.set(modo_apariencia)
