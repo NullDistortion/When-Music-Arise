@@ -1,162 +1,50 @@
-"""
-download_controller.py
-----------------------
-Controlador de descarga de música.
-Responsabilidades:
-  · Capturar los datos de la vista (enlace, calidad).
-  · Validar el formato del enlace antes de despachar.
-  · Construir el DTO de descarga con las rutas del ConfigController.
-  · Despachar al DownloadService y convertir sus callbacks en actualizaciones
-    de GUI hilo-seguras mediante CTk's .after(0, ...).
-"""
+class ControladorDescarga:
+    def __init__(self, servicio_descarga, modelo_viajero):
+        self.servicio_descarga = servicio_descarga
+        self.modelo_viajero = modelo_viajero
+        self.vista_activa = None
 
-import re
-from typing import Optional
+    def establecer_vista_activa(self, vista):
+        """Recibe la vista instanciada (Tradicional o Moderna) y vincula su botón."""
+        self.vista_activa = vista
+        self.vista_activa.vincular_descarga(self.procesar_descarga)
 
-from src.services.download_service import DownloadService
+    def procesar_descarga(self):
+        datos = self.vista_activa.obtener_datos_descarga()
+        enlace_musica = datos.get("enlace", "").strip()
+        calidad_audio = datos.get("calidad", "")
 
-# ── Patrón de validación de URL ───────────────────────────────────────────────
-# Acepta URLs http y https con dominio, IP o localhost.
-_PATRON_URL_VALIDA = re.compile(
-    r"^https?://"                                          # Esquema
-    r"(?:"
-    r"  (?:[A-Z0-9](?:[A-Z0-9\-]{0,61}[A-Z0-9])?\.)"    # Subdominio(s)
-    r"  +[A-Z]{2,6}\.?"                                   # TLD
-    r"  |localhost"                                        # O localhost
-    r"  |\d{1,3}(?:\.\d{1,3}){3}"                        # O dirección IP
-    r")"
-    r"(?::\d+)?"                                          # Puerto opcional
-    r"(?:/?|[/?]\S+)$",
-    re.IGNORECASE | re.VERBOSE,
-)
-
-
-class DownloadController:
-    """
-    Orquesta el ciclo completo de una descarga:
-    validación → construcción del DTO → despacho al servicio → actualización de la GUI.
-    """
-
-    def __init__(self, vista, controlador_principal) -> None:
-        self._servicio_descarga     = DownloadService()
-        self._vista                 = vista       # main_view (CTk root window)
-        self._controlador_principal = controlador_principal
-
-    # ── API Pública ───────────────────────────────────────────────────────────
-
-    def iniciar_descarga(self, enlace_musica: str, calidad_audio: str) -> None:
-        """
-        Punto de entrada llamado por la vista cuando el usuario pulsa 'Descargar'.
-
-        Args:
-            enlace_musica: URL del contenido a descargar (pista, álbum o lista).
-            calidad_audio: Bitrate en kbps como cadena (ej. "320").
-        """
-        # 1. Validar el enlace
-        if not self._validar_enlace(enlace_musica):
-            self._vista.mostrar_error(
-                "Enlace no válido.\n"
-                "Ingresa una URL completa (ej. https://open.spotify.com/track/...)."
-            )
+        if not enlace_musica:
+            self.despachar_mensaje_vista("Error: El enlace no puede estar vacío.")
             return
 
-        # 2. Verificar que no haya una descarga activa
-        if self._servicio_descarga.en_progreso:
-            self._vista.mostrar_error(
-                "Ya hay una descarga en curso. "
-                "Espera a que termine o cancélala antes de iniciar otra."
-            )
+        rutas = self.modelo_viajero.leer_rutas()
+        ruta_descarga = rutas.get("ruta_descarga", "")
+
+        if not ruta_descarga:
+            self.despachar_mensaje_vista("Error: Configura el directorio de descarga en Traveller primero.")
             return
 
-        # 3. Obtener rutas desde ConfigController (sin acceder al disco directamente)
-        controlador_config = self._controlador_principal.obtener_controlador("config")
-        ruta_descarga       = controlador_config.obtener_ruta_descarga()       if controlador_config else ""
-        ruta_descargador_cli = controlador_config.obtener_ruta_descargador_cli() if controlador_config else ""
+        self.despachar_mensaje_vista("Iniciando motor de descarga...")
 
-        if not ruta_descargador_cli:
-            self._vista.mostrar_error(
-                "El descargador CLI no está configurado.\n"
-                "Ve a ⚙ Config → 'Ruta del descargador CLI'."
-            )
-            return
-
-        # 4. Construir el DTO de descarga (variables en español, según especificación)
-        dto_descarga = {
-            "enlace_musica":       enlace_musica.strip(),
-            "calidad_audio":       calidad_audio.strip(),
-            "ruta_descarga":       ruta_descarga,
-            "ruta_descargador_cli": ruta_descargador_cli,
-        }
-
-        # 5. Actualizar estado de la GUI antes de lanzar el hilo
-        self._vista.mostrar_log(f"Iniciando descarga: {enlace_musica}")
-        self._vista.actualizar_estado_descarga(en_progreso=True)
-
-        # 6. Despachar al servicio (lanza el hilo de fondo)
-        self._servicio_descarga.iniciar_descarga(
-            dto_descarga=dto_descarga,
-            callback_progreso=self._al_recibir_progreso,
-            callback_completado=self._al_completar_descarga,
+        # Se envía la petición al servicio. Los callbacks permiten que el servicio
+        # en segundo plano actualice la interfaz sin bloquearla.
+        self.servicio_descarga.ejecutar_descarga(
+            enlace=enlace_musica,
+            calidad=calidad_audio,
+            ruta_destino=ruta_descarga,
+            callback_progreso=self.actualizar_progreso_vista,
+            callback_texto=self.despachar_mensaje_vista
         )
 
-    def cancelar_descarga(self) -> None:
-        """Solicita la cancelación de la descarga activa."""
-        exito_cancelacion = self._servicio_descarga.cancelar_descarga()
-        if exito_cancelacion:
-            self._vista.mostrar_log("Descarga cancelada por el usuario.")
-            self._vista.actualizar_estado_descarga(en_progreso=False)
+    def despachar_mensaje_vista(self, mensaje: str):
+        """Actualiza la vista tradicional (logs) o moderna (estado) según corresponda."""
+        if hasattr(self.vista_activa, "agregar_log"):
+            self.vista_activa.agregar_log(mensaje)
+        elif hasattr(self.vista_activa, "lbl_estado"):
+            self.vista_activa.lbl_estado.configure(text=mensaje)
 
-    # ── Callbacks del servicio (se invocan desde el hilo secundario) ──────────
-
-    def _al_recibir_progreso(self, texto: str, porcentaje: int) -> None:
-        """
-        Callback invocado por DownloadService desde el hilo de descarga
-        cada vez que el proceso CLI emite una línea de salida.
-
-        IMPORTANTE – seguridad de hilos (thread-safety):
-        Tkinter/CustomTkinter NO es hilo-seguro. Modificar widgets desde
-        un hilo secundario puede corromper el estado de la GUI o generar
-        excepciones silenciosas.
-
-        Solución: self._vista.after(0, fn) encola la actualización en el
-        hilo principal (mainloop). El '0' indica "ejecutar lo antes posible
-        en el siguiente ciclo del event loop", sin introducir retardo perceptible.
-        """
-        self._vista.after(
-            0,
-            lambda t=texto, p=porcentaje: self._vista.mostrar_progreso(t, p)
-        )
-
-    def _al_completar_descarga(self, exito: bool, mensaje: str) -> None:
-        """
-        Callback invocado por DownloadService desde el hilo de descarga
-        cuando el proceso CLI termina (con éxito o con error).
-
-        Al igual que _al_recibir_progreso, usa .after(0, ...) para
-        garantizar que la actualización de la GUI ocurra en el hilo principal.
-        """
-        def _actualizar_gui_al_terminar():
-            self._vista.mostrar_log(mensaje)
-            self._vista.actualizar_estado_descarga(en_progreso=False)
-            if exito:
-                # Asegurar que la barra de progreso llegue a 100% al finalizar
-                self._vista.mostrar_progreso("Descarga completada.", 100)
-
-        # Encolar actualización en el hilo principal del event loop
-        self._vista.after(0, _actualizar_gui_al_terminar)
-
-    # ── Utilidades ────────────────────────────────────────────────────────────
-
-    def _validar_enlace(self, enlace: str) -> bool:
-        """
-        Verifica que el enlace sea una URL HTTP/HTTPS bien formada.
-
-        Args:
-            enlace: Cadena a validar.
-
-        Returns:
-            True si el enlace es una URL válida, False en caso contrario.
-        """
-        if not enlace or not enlace.strip():
-            return False
-        return bool(_PATRON_URL_VALIDA.match(enlace.strip()))
+    def actualizar_progreso_vista(self, porcentaje: float):
+        """Actualiza la barra de progreso solo si la vista moderna está activa."""
+        if hasattr(self.vista_activa, "actualizar_progreso"):
+            self.vista_activa.actualizar_progreso(porcentaje)

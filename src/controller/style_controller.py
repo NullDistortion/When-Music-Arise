@@ -1,82 +1,28 @@
-"""
-style_controller.py
--------------------
-Controlador de estilos visuales.
-Responsabilidades:
-  · Conectar DavinciView con ArtistModel.
-  · Abrir/gestionar la ventana de personalización visual.
-  · Solicitar la lectura de estilos actuales al modelo.
-  · Guardar nuevos estilos a través del modelo y notificar al MainController.
-"""
+class ControladorEstilo:
+    def __init__(self, controlador_principal, modelo_artista):
+        self.controlador_principal = controlador_principal
+        self.modelo_artista = modelo_artista
+        self.vista_davinci = None
 
-from typing import Any, Dict, Optional
+    def establecer_vista(self, vista):
+        self.vista_davinci = vista
+        
+        # Cargar los datos actuales en la interfaz
+        estilos_actuales = self.modelo_artista.leer_estilos()
+        modo = estilos_actuales.get("modo_apariencia", "Dark")
+        color = estilos_actuales.get("color_acento", "blue")
+        
+        self.vista_davinci.cargar_estilos(modo, color)
+        self.vista_davinci.vincular_guardado(self.guardar_y_aplicar)
 
-
-class StyleController:
-    """
-    Puente entre la vista de estilos (DavinciView) y el modelo de persistencia (ArtistModel).
-    No contiene lógica de negocio visual; sólo orquesta el flujo de datos.
-    """
-
-    def __init__(self, controlador_principal) -> None:
-        from src.models.artist_model import ArtistModel
-
-        self._modelo_artista    = ArtistModel()
-        self._controlador_principal = controlador_principal
-
-        # Referencia a la ventana auxiliar abierta (para evitar duplicados)
-        self._ventana_davinci: Optional[Any] = None
-
-    # ── Apertura de ventana ───────────────────────────────────────────────────
-
-    def abrir_ventana_estilos(self) -> None:
-        """
-        Abre la ventana DavinciView con los estilos actuales precargados.
-        Si la ventana ya está abierta, la trae al frente.
-        """
-        from src.view.davinci_view import DavinciView
-
-        # Evitar abrir múltiples instancias simultáneas
-        if self._ventana_davinci is not None:
-            try:
-                if self._ventana_davinci.winfo_exists():
-                    self._ventana_davinci.focus()
-                    return
-            except Exception:
-                pass  # La ventana fue destruida externamente
-
-        estilos_actuales = self._modelo_artista.leer_estilos()
-
-        self._ventana_davinci = DavinciView(
-            controlador=self,
-            estilos_actuales=estilos_actuales,
-        )
-
-    # ── Operaciones de datos ──────────────────────────────────────────────────
-
-    def leer_estilos_actuales(self) -> Dict[str, Any]:
-        """
-        Retorna los estilos almacenados en artist.json.
-        Llamado por DavinciView para precargar los campos del formulario.
-        """
-        return self._modelo_artista.leer_estilos()
-
-    def guardar_estilos(self, nuevos_estilos: Dict[str, Any]) -> bool:
-        """
-        Persiste los nuevos estilos en artist.json y notifica al orquestador
-        central para que actualice la apariencia en tiempo de ejecución.
-
-        Args:
-            nuevos_estilos: Diccionario con los valores de apariencia a guardar.
-
-        Returns:
-            True si la operación fue exitosa.
-        """
-        exito = self._modelo_artista.guardar_estilos(nuevos_estilos)
-
-        if exito:
-            # Notificar al MainController: actualiza los estilos activos en memoria
-            # y reaplica set_appearance_mode / set_default_color_theme a CTk.
-            self._controlador_principal.actualizar_estilos(nuevos_estilos)
-
-        return exito
+    def guardar_y_aplicar(self):
+        nuevos_estilos = self.vista_davinci.obtener_estilos()
+        
+        # Persistir en JSON
+        self.modelo_artista.guardar_estilos(nuevos_estilos)
+        
+        # Aplicar los cambios en tiempo real a toda la app
+        self.controlador_principal.aplicar_estilo_global()
+        
+        # Cerrar la ventana emergente
+        self.vista_davinci.destroy()
