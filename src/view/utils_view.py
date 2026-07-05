@@ -1,4 +1,5 @@
 import customtkinter as ctk
+import os
 from customtkinter import filedialog
 
 class UtilsView(ctk.CTkToplevel):
@@ -6,9 +7,14 @@ class UtilsView(ctk.CTkToplevel):
         super().__init__(master)
         self.title("Configuración de Rutas (Traveller)")
         self.geometry("600x350")
-        self.grab_set() 
+        self.grab_set()
 
-        # --- Fila Descarga ---
+        ruta_icono = os.path.join("assets", "imgs", "logo.ico")
+        if os.path.exists(ruta_icono):
+            self.after(200, lambda: self.iconbitmap(ruta_icono))
+            
+        self.lbl_descarga = ctk.CTkLabel(self, text="Directorio de Descarga:", font=("Arial", 12, "bold")) 
+
         self.lbl_descarga = ctk.CTkLabel(self, text="Directorio de Descarga:", font=("Arial", 12, "bold"))
         self.lbl_descarga.pack(anchor="w", padx=20, pady=(20, 5))
         
@@ -21,7 +27,6 @@ class UtilsView(ctk.CTkToplevel):
         self.btn_exp_descarga = ctk.CTkButton(fila_descarga, text="Explorar...", width=100, command=self._seleccionar_carpeta)
         self.btn_exp_descarga.pack(side="left")
 
-        # --- Fila Picard ---
         self.lbl_picard = ctk.CTkLabel(self, text="Ruta del ejecutable de Picard (.exe):", font=("Arial", 12, "bold"))
         self.lbl_picard.pack(anchor="w", padx=20, pady=(20, 5))
 
@@ -34,7 +39,6 @@ class UtilsView(ctk.CTkToplevel):
         self.btn_exp_picard = ctk.CTkButton(fila_picard, text="Explorar...", width=100, command=self._seleccionar_archivo)
         self.btn_exp_picard.pack(side="left")
 
-        # --- Guardar ---
         self.btn_guardar = ctk.CTkButton(self, text="Guardar Rutas", fg_color="green")
         self.btn_guardar.pack(pady=30)
 

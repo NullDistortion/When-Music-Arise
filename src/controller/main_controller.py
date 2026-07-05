@@ -17,6 +17,7 @@ class ControladorPrincipal:
         self.controlador_descarga = ControladorDescarga(servicio_descarga, self.modelo_viajero)
         self.controlador_picad = ControladorPicad(servicio_picad, self.modelo_viajero)
 
+        self.controlador_descarga.establecer_controlador_picard(self.controlador_picad)
         self.tipo_vista_actual = "moderno"
         
         self.vista_principal.vincular_alternar_vista(self.alternar_vista)
@@ -27,24 +28,27 @@ class ControladorPrincipal:
         self.aplicar_estilo_global()
         self.renderizar_vista_activa()
 
-        # VERIFICACIÓN OBLIGATORIA INICIAL
         rutas = self.modelo_viajero.leer_rutas()
         if not rutas.get("ruta_descarga", "").strip():
-            # Si no hay ruta de descarga, forzamos abrir la ventana de configuración
             self.abrir_configuracion_rutas()
 
     def aplicar_estilo_global(self):
         estilos = self.modelo_artista.leer_estilos()
-        modo = estilos.get("modo_apariencia", "Dark")
-        color = estilos.get("color_acento", "Azul (Defecto)")
-        self.vista_principal.inyectar_estilos(modo, color)
+        tema = estilos.get("tema", "Windows Classic")
+        self.vista_principal.inyectar_estilos(tema)
 
     def renderizar_vista_activa(self):
         vista_hija = self.vista_principal.renderizar_vista(self.tipo_vista_actual)
         self.controlador_descarga.establecer_vista_activa(vista_hija)
 
     def alternar_vista(self):
+        # 1. SALVAMOS ESTADO ANTES DE DESTRUIR LA VISTA (Previene el TclError)
+        self.controlador_descarga.guardar_estado_actual()
+
+        # 2. Alternamos el identificador
         self.tipo_vista_actual = "tradicional" if self.tipo_vista_actual == "moderno" else "moderno"
+        
+        # 3. Renderizamos
         self.renderizar_vista_activa()
 
     def abrir_configuracion_estilos(self):
