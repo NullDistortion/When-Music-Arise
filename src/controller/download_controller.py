@@ -56,6 +56,8 @@ class ControladorDescarga:
 
         rutas = self.modelo_viajero.leer_rutas()
         ruta_descarga = rutas.get("ruta_descarga", "")
+        navegador_elegido = rutas.get("navegador", "edge")
+
         if not ruta_descarga:
             self.despachar_mensaje_vista("Error: Configura el directorio en Traveller primero.")
             return
@@ -70,10 +72,13 @@ class ControladorDescarga:
         self.despachar_mensaje_vista("Iniciando motor de descarga...")
 
         self.servicio_descarga.ejecutar_descarga(
-            enlace=enlace_musica, calidad=calidad_audio, ruta_destino=ruta_descarga,
+            enlace=enlace_musica, 
+            calidad=calidad_audio, 
+            ruta_destino=ruta_descarga,
+            navegador=navegador_elegido,
             callback_progreso=self.actualizar_progreso_vista,
             callback_texto=self.despachar_mensaje_vista,
-            callback_fin=self._retorno_hilo_seguro # <-- AQUÍ SE CORRIGE EL HILO
+            callback_fin=self._retorno_hilo_seguro
         )
 
     def despachar_mensaje_vista(self, mensaje: str):
@@ -88,7 +93,6 @@ class ControladorDescarga:
             self.vista_activa.actualizar_progreso(porcentaje, self.estado_texto)
 
     def _retorno_hilo_seguro(self, exito: bool):
-        """Obliga a que la finalización y Picard ocurran en el hilo principal gráfico."""
         if self.vista_activa:
             self.vista_activa.after(0, lambda: self.finalizar_descarga(exito))
 

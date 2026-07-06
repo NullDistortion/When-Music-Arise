@@ -3,6 +3,7 @@ import os
 from .traditional_view import TraditionalView
 from .modern_view import ModernView
 from src.utils.theme_provider import PROVEEDOR_TEMAS
+from src.utils.path_helper import obtener_ruta_absoluta
 
 class MainView(ctk.CTk):
     def __init__(self):
@@ -14,7 +15,7 @@ class MainView(ctk.CTk):
         pos_y = int((self.winfo_screenheight() / 2) - (alto_ventana / 2))
         self.geometry(f"{ancho_ventana}x{alto_ventana}+{pos_x}+{pos_y}")
 
-        ruta_icono = os.path.join("assets", "imgs", "logo.ico")
+        ruta_icono = obtener_ruta_absoluta(os.path.join("assets", "imgs", "logo.ico"))
         if os.path.exists(ruta_icono):
             self.iconbitmap(ruta_icono)
 

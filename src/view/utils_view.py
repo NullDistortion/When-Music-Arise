@@ -39,6 +39,14 @@ class UtilsView(ctk.CTkToplevel):
         self.btn_exp_picard = ctk.CTkButton(fila_picard, text="Explorar...", width=100, command=self._seleccionar_archivo)
         self.btn_exp_picard.pack(side="left")
 
+        self.btn_exp_picard.pack(side="left")
+
+        self.lbl_nav = ctk.CTkLabel(self, text="Navegador para evadir restricciones de edad (Cookies):", font=("Arial", 12, "bold"))
+        self.lbl_nav.pack(anchor="w", padx=20, pady=(20, 5))
+
+        self.combo_nav = ctk.CTkComboBox(self, values=["edge", "chrome", "brave", "firefox", "opera", "vivaldi", "safari"], width=420)
+        self.combo_nav.pack(anchor="w", padx=20, pady=5)
+
         self.btn_guardar = ctk.CTkButton(self, text="Guardar Rutas", fg_color="green")
         self.btn_guardar.pack(pady=30)
 
@@ -57,10 +65,15 @@ class UtilsView(ctk.CTkToplevel):
     def vincular_guardado(self, callback): self.btn_guardar.configure(command=callback)
         
     def obtener_rutas(self) -> dict:
-        return {"ruta_descarga": self.entrada_descarga.get(), "ruta_picard": self.entrada_picard.get()}
+        return {
+            "ruta_descarga": self.entrada_descarga.get(), 
+            "ruta_picard": self.entrada_picard.get(),
+            "navegador": self.combo_nav.get()
+        }
 
-    def cargar_rutas(self, ruta_descarga: str, ruta_picard: str):
+    def cargar_rutas(self, ruta_descarga: str, ruta_picard: str, navegador: str):
         self.entrada_descarga.delete(0, "end")
         self.entrada_descarga.insert(0, ruta_descarga)
         self.entrada_picard.delete(0, "end")
         self.entrada_picard.insert(0, ruta_picard)
+        self.combo_nav.set(navegador)

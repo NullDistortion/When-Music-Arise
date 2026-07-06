@@ -18,18 +18,18 @@ class ServicioDescarga:
         if self.proceso:
             self.proceso.terminate()
 
-    def ejecutar_descarga(self, enlace: str, calidad: str, ruta_destino: str, callback_progreso, callback_texto, callback_fin):
+    def ejecutar_descarga(self, enlace: str, calidad: str, ruta_destino: str, navegador: str, callback_progreso, callback_texto, callback_fin):
         self.pausado = False
         self.cancelado = False
         
         hilo_descarga = threading.Thread(
             target=self._tarea_en_segundo_plano,
-            args=(enlace, calidad, ruta_destino, callback_progreso, callback_texto, callback_fin),
+            args=(enlace, calidad, ruta_destino, navegador, callback_progreso, callback_texto, callback_fin),
             daemon=True
         )
         hilo_descarga.start()
 
-    def _tarea_en_segundo_plano(self, enlace: str, calidad: str, ruta_destino: str, callback_progreso, callback_texto, callback_fin):
+    def _tarea_en_segundo_plano(self, enlace: str, calidad: str, ruta_destino: str, navegador: str, callback_progreso, callback_texto, callback_fin):
         exito_operacion = False
         callback_texto("Iniciando conexión con el servidor...")
 
@@ -40,6 +40,7 @@ class ServicioDescarga:
         
         comando = [
             "yt-dlp", "--no-update", "-x", "--audio-format", "mp3",
+            "--cookies-from-browser", navegador,
             "--output", f"{ruta_destino}/%(title)s.%(ext)s",
             "--replace-in-metadata", "title", r"(?i)\s*[\(\[].*?(?:official|music|video|audio|lyric).*?[\)\]]\s*", "",
             *argumentos_calidad, "--newline", enlace
