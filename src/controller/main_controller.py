@@ -1,5 +1,6 @@
 from src.view.davinci_view import DavinciView
 from src.view.utils_view import UtilsView
+from src.exception.cancel_manager import GestorCancelacion
 
 class ControladorPrincipal:
     def __init__(self, vista_principal, modelo_artista, modelo_viajero, servicio_descarga, servicio_picad):
@@ -15,9 +16,14 @@ class ControladorPrincipal:
         self.controlador_estilo = ControladorEstilo(self, self.modelo_artista)
         self.controlador_config = ControladorConfig(self.modelo_viajero)
         self.controlador_descarga = ControladorDescarga(servicio_descarga, self.modelo_viajero)
+        
+        self.controlador_descarga.establecer_callback_topbar(self.vista_principal.alternar_estado_topbar)
         self.controlador_picad = ControladorPicad(servicio_picad, self.modelo_viajero)
-
         self.controlador_descarga.establecer_controlador_picard(self.controlador_picad)
+
+        gestor_cancelacion = GestorCancelacion(servicio_descarga, self.modelo_viajero, self.controlador_descarga)
+        self.controlador_descarga.establecer_gestor_cancelacion(gestor_cancelacion)
+
         self.tipo_vista_actual = "moderno"
         
         self.vista_principal.vincular_alternar_vista(self.alternar_vista)

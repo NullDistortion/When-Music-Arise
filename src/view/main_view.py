@@ -108,3 +108,9 @@ class MainView(ctk.CTk):
         self.btn_abrir_artist.configure(command=callback)
     def vincular_abrir_picard(self, callback): 
         self.btn_abrir_picard.configure(command=callback)
+
+    def alternar_estado_topbar(self, estado: str):
+        self.btn_alternar_vista.configure(state=estado)
+        self.btn_abrir_traveller.configure(state=estado)
+        self.btn_abrir_artist.configure(state=estado)
+        self.btn_abrir_picard.configure(state=estado)
