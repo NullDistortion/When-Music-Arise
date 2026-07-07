@@ -9,9 +9,8 @@ class ControladorConfig:
         rutas_actuales = self.modelo_viajero.leer_rutas()
         descarga = rutas_actuales.get("ruta_descarga", "")
         picard = rutas_actuales.get("ruta_picard", "")
-        cookies = rutas_actuales.get("ruta_cookies", "")
         
-        self.vista_utils.cargar_rutas(descarga, picard, cookies)
+        self.vista_utils.cargar_rutas(descarga, picard)
         self.vista_utils.vincular_guardado(self.guardar_rutas)
 
     def guardar_rutas(self):

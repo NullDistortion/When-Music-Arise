@@ -17,7 +17,6 @@ class MotherView(ctk.CTkFrame):
         self.check_auto_picard = ctk.CTkCheckBox(self, text="Cargar automáticamente en Picard al finalizar", variable=self.var_auto_picard)
         self.check_auto_picard.pack(pady=10)
 
-        # Marco para agrupar Descargar y Cancelar
         frame_botones = ctk.CTkFrame(self, fg_color="transparent")
         frame_botones.pack(pady=10)
 
@@ -48,13 +47,11 @@ class MotherView(ctk.CTkFrame):
         self.var_auto_picard.set(datos.get("auto_picard", False))
 
     def alternar_estado_controles(self, estado: str):
-        # Bloquear/Desbloquear los de entrada
         self.btn_descargar.configure(state=estado)
         self.check_auto_picard.configure(state=estado)
         self.entrada_enlace.configure(state=estado)
         self.combo_calidad.configure(state=estado)
         
-        # El botón cancelar funciona a la inversa
         estado_cancelar = "normal" if estado == "disabled" else "disabled"
         self.btn_cancelar.configure(state=estado_cancelar)
 

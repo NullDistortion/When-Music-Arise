@@ -59,7 +59,6 @@ class ControladorDescarga:
 
         rutas = self.modelo_viajero.leer_rutas()
         ruta_descarga = rutas.get("ruta_descarga", "")
-        ruta_cookies = rutas.get("ruta_cookies", "").strip()
 
         if not ruta_descarga:
             self.despachar_mensaje_vista("Error: Configura el directorio en Traveller primero.")
@@ -78,7 +77,6 @@ class ControladorDescarga:
             enlace=enlace_musica,
             calidad=calidad_audio,
             ruta_destino=ruta_descarga,
-            ruta_cookies=ruta_cookies,
             callback_progreso=self.actualizar_progreso_vista,
             callback_texto=self.despachar_mensaje_vista,
             callback_fin=self._retorno_hilo_seguro

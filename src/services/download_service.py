@@ -4,7 +4,6 @@ import re
 import time
 import os
 import sys
-
 from src.utils.path_helper import obtener_ruta_absoluta
 
 class ServicioDescarga:
@@ -22,18 +21,18 @@ class ServicioDescarga:
         if self.proceso:
             self.proceso.terminate()
 
-    def ejecutar_descarga(self, enlace: str, calidad: str, ruta_destino: str, ruta_cookies: str, callback_progreso, callback_texto, callback_fin):
+    def ejecutar_descarga(self, enlace: str, calidad: str, ruta_destino: str, callback_progreso, callback_texto, callback_fin):
         self.pausado = False
         self.cancelado = False
         
         hilo_descarga = threading.Thread(
             target=self._tarea_en_segundo_plano,
-            args=(enlace, calidad, ruta_destino, ruta_cookies, callback_progreso, callback_texto, callback_fin),
+            args=(enlace, calidad, ruta_destino, callback_progreso, callback_texto, callback_fin),
             daemon=True
         )
         hilo_descarga.start()
 
-    def _tarea_en_segundo_plano(self, enlace: str, calidad: str, ruta_destino: str, ruta_cookies: str, callback_progreso, callback_texto, callback_fin):
+    def _tarea_en_segundo_plano(self, enlace: str, calidad: str, ruta_destino: str, callback_progreso, callback_texto, callback_fin):
         exito_operacion = False
         callback_texto("Iniciando conexión con el servidor...")
 
@@ -58,17 +57,8 @@ class ServicioDescarga:
             callback_fin(False)
             return
 
-        # LOGICA DE COOKIES VÍA ARCHIVO
-        argumentos_cookies = []
-        if ruta_cookies and os.path.exists(ruta_cookies):
-            callback_texto("Aplicando archivo de cookies externo para autorización...")
-            argumentos_cookies = ["--cookies", ruta_cookies]
-        else:
-            callback_texto("Intentando extracción pública estándar...")
-
         comando = [
             ruta_ytdlp, "--no-update", "-x", "--audio-format", "mp3",
-            *argumentos_cookies,
             "--output", f"{ruta_destino}/%(title)s.%(ext)s",
             "--replace-in-metadata", "title", r"(?i)\s*[\(\[].*?(?:official|music|video|audio|lyric).*?[\)\]]\s*", "",
             *argumentos_calidad, "--newline", enlace
@@ -102,7 +92,7 @@ class ServicioDescarga:
                 exito_operacion = True
             else:
                 callback_texto(f"⚠ Ocurrió un error o advertencia. Código: {self.proceso.returncode}")
-                exito_operacion = True # Fuerza la apertura de Picard si la playlist fue parcial
+                exito_operacion = True
 
         except Exception as error:
             callback_texto(f"Error inesperado: {str(error)}")
