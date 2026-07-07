@@ -1,3 +1,6 @@
+import os
+import glob
+
 class ControladorDescarga:
     def __init__(self, servicio_descarga, modelo_viajero):
         self.servicio_descarga = servicio_descarga
@@ -6,7 +9,7 @@ class ControladorDescarga:
         self.controlador_picad = None
         self.vista_activa = None
         self.callback_topbar = None
-        self.gestor_cancelacion = None # Se inyectará desde el main_controller
+        self.gestor_cancelacion = None
         
         self.descargando = False
         self.progreso_actual = 0.0
@@ -56,7 +59,7 @@ class ControladorDescarga:
 
         rutas = self.modelo_viajero.leer_rutas()
         ruta_descarga = rutas.get("ruta_descarga", "")
-        navegador_elegido = rutas.get("navegador", "edge")
+        ruta_cookies = rutas.get("ruta_cookies", "").strip()
 
         if not ruta_descarga:
             self.despachar_mensaje_vista("Error: Configura el directorio en Traveller primero.")
@@ -72,10 +75,10 @@ class ControladorDescarga:
         self.despachar_mensaje_vista("Iniciando motor de descarga...")
 
         self.servicio_descarga.ejecutar_descarga(
-            enlace=enlace_musica, 
-            calidad=calidad_audio, 
+            enlace=enlace_musica,
+            calidad=calidad_audio,
             ruta_destino=ruta_descarga,
-            navegador=navegador_elegido,
+            ruta_cookies=ruta_cookies,
             callback_progreso=self.actualizar_progreso_vista,
             callback_texto=self.despachar_mensaje_vista,
             callback_fin=self._retorno_hilo_seguro
@@ -104,5 +107,15 @@ class ControladorDescarga:
         if exito and self.controlador_picad:
             datos = self.vista_activa.obtener_datos_descarga()
             if datos.get("auto_picard", False):
-                self.despachar_mensaje_vista("Lanzando Picard automáticamente...")
-                self.controlador_picad.abrir_picard()
+                rutas = self.modelo_viajero.leer_rutas()
+                ruta_descarga = rutas.get("ruta_descarga", "")
+                
+                if os.path.exists(ruta_descarga):
+                    archivos_mp3 = glob.glob(os.path.join(ruta_descarga, "*.mp3"))
+                    if archivos_mp3:
+                        self.despachar_mensaje_vista("Lanzando Picard automáticamente...")
+                        self.controlador_picad.abrir_picard()
+                    else:
+                        self.despachar_mensaje_vista("⚠ Picard omitido: No se encontraron archivos .mp3 en la carpeta destino.")
+                else:
+                    self.despachar_mensaje_vista("⚠ Error: La carpeta de descarga no existe.")
