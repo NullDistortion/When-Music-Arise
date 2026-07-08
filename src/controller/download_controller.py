@@ -1,5 +1,9 @@
 import os
 import glob
+import sys
+import tkinter as tk
+import customtkinter as ctk
+from src.utils.path_helper import obtener_ruta_absoluta
 
 class ControladorDescarga:
     def __init__(self, servicio_descarga, modelo_viajero):
@@ -93,14 +97,17 @@ class ControladorDescarga:
         if hasattr(self.vista_activa, "actualizar_progreso"):
             self.vista_activa.actualizar_progreso(porcentaje, self.estado_texto)
 
-    def _retorno_hilo_seguro(self, exito: bool):
+    def _retorno_hilo_seguro(self, exito: bool, errores_detectados: list):
         if self.vista_activa:
-            self.vista_activa.after(0, lambda: self.finalizar_descarga(exito))
+            self.vista_activa.after(0, lambda: self.finalizar_descarga(exito, errores_detectados))
 
-    def finalizar_descarga(self, exito: bool):
+    def finalizar_descarga(self, exito: bool, errores_detectados: list):
         self.descargando = False
         self.vista_activa.alternar_estado_controles("normal")
         if self.callback_topbar: self.callback_topbar("normal")
+        
+        if errores_detectados:
+            self._mostrar_popup_errores(errores_detectados)
         
         if exito and self.controlador_picad:
             datos = self.vista_activa.obtener_datos_descarga()
@@ -117,3 +124,39 @@ class ControladorDescarga:
                         self.despachar_mensaje_vista("⚠ Picard omitido: No se encontraron archivos .mp3 en la carpeta destino.")
                 else:
                     self.despachar_mensaje_vista("⚠ Error: La carpeta de descarga no existe.")
+
+    def _mostrar_popup_errores(self, errores: list):
+        ventana_error = ctk.CTkToplevel(self.vista_activa)
+        ventana_error.title("Reporte de Elementos Omitidos")
+        ventana_error.geometry("550x350")
+        ventana_error.grab_set() 
+        
+        # INYECCIÓN MULTIPLATAFORMA DEL ÍCONO
+        if sys.platform == "win32":
+            ruta_icono = obtener_ruta_absoluta(os.path.join("assets", "imgs", "logo.ico"))
+            if os.path.exists(ruta_icono):
+                ventana_error.after(200, lambda: ventana_error.iconbitmap(ruta_icono))
+        else:
+            ruta_icono = obtener_ruta_absoluta(os.path.join("assets", "imgs", "logo.png"))
+            if os.path.exists(ruta_icono):
+                try:
+                    img = tk.PhotoImage(file=ruta_icono)
+                    ventana_error.after(200, lambda: ventana_error.iconphoto(False, img))
+                except Exception:
+                    pass
+        
+        lbl_titulo = ctk.CTkLabel(ventana_error, text="⚠ Se omitieron algunos elementos:", font=("Arial", 16, "bold"), text_color="#d68910")
+        lbl_titulo.pack(pady=(15, 5))
+        
+        caja_texto = ctk.CTkTextbox(ventana_error, width=500, height=200, font=("Arial", 12))
+        caja_texto.pack(pady=10)
+        
+        texto_final = ""
+        for i, error_txt in enumerate(errores, start=1):
+            texto_final += f"{i}) {error_txt}\n\n"
+            
+        caja_texto.insert("0.0", texto_final)
+        caja_texto.configure(state="disabled") 
+        
+        btn_aceptar = ctk.CTkButton(ventana_error, text="Entendido", command=ventana_error.destroy)
+        btn_aceptar.pack(pady=10)

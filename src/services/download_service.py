@@ -34,6 +34,7 @@ class ServicioDescarga:
 
     def _tarea_en_segundo_plano(self, enlace: str, calidad: str, ruta_destino: str, callback_progreso, callback_texto, callback_fin):
         exito_operacion = False
+        errores_detectados = [] 
         callback_texto("Iniciando conexión con el servidor...")
 
         argumentos_calidad = []
@@ -54,7 +55,7 @@ class ServicioDescarga:
 
         if not os.path.exists(ruta_ytdlp):
             callback_texto(f"Error Crítico: No se encontró el motor en {ruta_ytdlp}")
-            callback_fin(False)
+            callback_fin(False, errores_detectados)
             return
 
         comando = [
@@ -66,6 +67,9 @@ class ServicioDescarga:
 
         try:
             self.proceso = subprocess.Popen(comando, **opciones_proceso)
+            
+            pista_actual = "Pista Individual"
+            id_actual = ""
 
             for linea in self.proceso.stdout:
                 while self.pausado:
@@ -75,6 +79,37 @@ class ServicioDescarga:
 
                 linea_limpia = linea.strip()
                 if not linea_limpia: continue
+
+                # 1. Rastrear posición en la playlist
+                match_item = re.search(r'Downloading item (\d+ of \d+)', linea_limpia)
+                if match_item:
+                    pista_actual = f"Pista {match_item.group(1)}"
+
+                # 2. Rastrear ID del video actual
+                match_url = re.search(r'watch\?v=([a-zA-Z0-9_-]+)', linea_limpia)
+                if match_url:
+                    id_actual = match_url.group(1)
+
+                # 3. Capturar y traducir el error
+                if linea_limpia.startswith("ERROR:"):
+                    motivo = "Error desconocido de descarga"
+                    str_lower = linea_limpia.lower()
+                    
+                    if "sign in to confirm your age" in str_lower:
+                        motivo = "Restricción de edad (+18)"
+                    elif "private video" in str_lower:
+                        motivo = "Video privado"
+                    elif "unavailable" in str_lower:
+                        motivo = "Video no disponible / Eliminado"
+                    elif "members-only" in str_lower:
+                        motivo = "Video exclusivo para miembros"
+
+                    enlace_fallido = f"https://youtube.com/watch?v={id_actual}" if id_actual else "Enlace desconocido"
+                    
+                    mensaje_amigable = f"{pista_actual} -> {motivo}\n   Link: {enlace_fallido}"
+                    
+                    if mensaje_amigable not in errores_detectados:
+                        errores_detectados.append(mensaje_amigable)
 
                 callback_texto(linea_limpia)
 
@@ -95,6 +130,8 @@ class ServicioDescarga:
                 exito_operacion = True
 
         except Exception as error:
-            callback_texto(f"Error inesperado: {str(error)}")
+            error_str = f"Error inesperado: {str(error)}"
+            callback_texto(error_str)
+            errores_detectados.append(error_str)
         finally:
-            callback_fin(exito_operacion)
+            callback_fin(exito_operacion, errores_detectados)
